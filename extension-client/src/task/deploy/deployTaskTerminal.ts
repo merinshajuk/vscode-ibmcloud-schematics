@@ -64,9 +64,16 @@ export default class DeployTaskTerminal implements vscode.Pseudoterminal {
             await api.pollState();
             terminal.printSuccess('Workspace verified');
             terminal.printHeading('Plan initiated');
-            await command.workspace.plan();
+            const jobid = await command.workspace.plan();
+            terminal.printText(jobid);
             await api.pollState();
             terminal.printSuccess('Plan generated');
+            const planJson = await command.pulse.getPlanJson(jobid);
+            const res = await command.pulse.runPredictor(JSON.parse(planJson));
+            // terminal.printText(res.jobID);
+            await command.pulse.pollApi(res.jobID);
+            const result = await command.pulse.getPredictedTime(res.jobID);
+            terminal.printText(result.TotalTimeEstimation)
             await command.workspace.apply();
             terminal.printHeading('Apply initiated');
             await api.pollState();

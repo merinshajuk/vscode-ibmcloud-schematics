@@ -16,66 +16,89 @@
  */
 
 import * as vscode from 'vscode';
-
 import * as api from '../../api';
 import * as util from '../../util';
-import JobsView from '../../webview/workspace/JobsView';
 
-export function jobs(context: vscode.ExtensionContext): void {
+let intervalId: any;
+
+export async function getPlanJson(jobid: string): Promise<any> {
     const isDeployed = util.workspace.isDeployed();
-    if (!isDeployed) {
-        vscode.window.showErrorMessage(
-            'Workspace not deployed. Make sure you have deployed your workspace.'
-        );
-        return;
-    }
-
-    try {
-        const jobs = new JobsView(context);
-        jobs.openView(false);
-    } catch (error) {
-        console.log(error);
-        vscode.window.showErrorMessage(String(error));
-    }
-}
-
-export async function plan(): Promise<string> {
-    const isDeployed = util.workspace.isDeployed();
-    var jobid = '';
+    var res = '';
     if (!isDeployed) {
         vscode.window.showErrorMessage(
             'Workspace not deployed. Make sure you have deployed your workspace.'
         );
         return '';
     }
-
+    
     try {
-        const ws = await util.workspace.readSchematicsWorkspace();
-        jobid = await api.runPlan(ws.id);
-        vscode.window.showInformationMessage('Plan initiated!');
+        vscode.window.showInformationMessage('Generating plan.json');
+        res =  await api.getPlanJson(jobid);
     } catch (error) {
         console.log(error);
         vscode.window.showErrorMessage(String(error));
     }
-
-    return jobid;
+    return res;
 }
 
-export async function apply(): Promise<void> {
+export async function runPredictor(planJson: any): Promise<any> {
     const isDeployed = util.workspace.isDeployed();
+    var res = '';
     if (!isDeployed) {
         vscode.window.showErrorMessage(
             'Workspace not deployed. Make sure you have deployed your workspace.'
         );
-        return;
+        return '';
     }
-
+    
     try {
-        const ws = await util.workspace.readSchematicsWorkspace();
-        await api.runApply(ws.id);
-        vscode.window.showInformationMessage('Apply initiated!');
+        vscode.window.showInformationMessage('Running predictor');
+        res =  await api.runPredictor(planJson);    
     } catch (error) {
         console.log(error);
         vscode.window.showErrorMessage(String(error));
     }
+    return res;
+}
+
+export async function getPredictedTime(id: string): Promise<any> {
+    const isDeployed = util.workspace.isDeployed();
+    var res = '';
+    if (!isDeployed) {
+        vscode.window.showErrorMessage(
+            'Workspace not deployed. Make sure you have deployed your workspace.'
+        );
+        return '';
+    }
+    
+    try {
+        vscode.window.showInformationMessage('Getting estimation');
+        res =  await api.getPredictedTime(id);    
+    } catch (error) {
+        console.log(error);
+        vscode.window.showErrorMessage(String(error));
+    }
+    return res;
+}
+
+export async function pollApi(id: string): Promise<boolean> {
+    const cred = await util.workspace.readCredentials();
+    const apikey = cred.apiKey
+
+    return new Promise((resolve, reject) => {
+        intervalId = setInterval(function () {
+            api.getPredictorStatus(id)
+                .then((res: any) => {
+                    console.log(JSON.stringify(res))
+                    const status = res.Status;
+                    if (status == 'COMPLETED') {
+                        clearInterval(intervalId);
+                        resolve(status);
+                    }
+                })
+                .catch((err: any) => {
+                    reject(err);
+                });
+        }, 2000);
+    });
 }

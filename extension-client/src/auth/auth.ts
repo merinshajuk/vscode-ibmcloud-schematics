@@ -18,11 +18,11 @@
 import * as type from '../type/index';
 import * as util from '../util';
 
-const schematicsV1 = require('@ibm-cloud/ibm-schematics/dist/schematics/v1');
+const schematicsV1 = require('@ibm-cloud/ibm-schematics/schematics/v1');
 
 const {
     IamAuthenticator: iamAuthnticator,
-} = require('@ibm-cloud/ibm-schematics/dist/auth/index');
+} = require('@ibm-cloud/ibm-schematics/auth/index');
 
 const iamEndpoint = {
     prod: 'https://iam.cloud.ibm.com/identity/token',

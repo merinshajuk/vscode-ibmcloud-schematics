@@ -15,8 +15,9 @@
  * limitations under the License.
  */
 
-const schematicsV1 = require('@ibm-cloud/ibm-schematics/dist/schematics/v1');
+const schematicsV1 = require('@ibm-cloud/ibm-schematics/schematics/v1');
 
+import fetch from 'node-fetch';
 import * as auth from '../auth/auth';
 import * as type from '../type/index';
 import * as util from '../util';
@@ -43,7 +44,7 @@ export async function uploadTar(payload: any): Promise<any> {
 
     return new Promise(function (resolve, reject) {
         schematicsService
-            .uploadTemplateTar(payload)
+            .templateRepoUpload(payload)
             .then(() => {
                 resolve('Workspace updated');
             })
@@ -190,11 +191,93 @@ export async function runPlan(id: string): Promise<string> {
         schematicsService
             .planWorkspaceCommand(params)
             .then((res: any) => {
-                resolve('Plan initiated');
+                resolve(res.result.activityid);
+                console.debug(res.result.activityid)
             })
             .catch((err: any) => {
                 reject(err);
             });
+    });
+}
+
+export async function getPlanJson(id: string): Promise<any> {
+    const schematicsService = await auth.getSchematicsService();
+    const refreshToken = await auth.getRefreshToken();
+    
+    const params = {
+        jobId: id,
+        fileType: "plan_json"
+    };
+
+    return new Promise((resolve, reject) => {
+        schematicsService
+            .getJobFiles(params)
+            .then((res: any) => {
+                resolve(res.result.file_content)
+                // console.debug(res.result.file_content)
+             })
+            .catch((err: any) => {
+                reject(err);
+            });
+    });
+}
+
+export async function runPredictor(planJson: any): Promise<any> {
+    const cred = await util.workspace.readCredentials();
+    const apikey = cred.apiKey
+
+    return new Promise((resolve, reject) => {
+        fetch (`https://application-4d.1g4ike7zqsct.us-south.codeengine.appdomain.cloud/api/v1/predictor/`, {
+            method: 'POST',
+            headers: {
+                "Content-type": "application/json",
+                'Apikey': apikey
+            },
+            body: JSON.stringify(planJson)
+        })
+        .then(response => resolve(response.json()))
+        .then(response => console.debug(response))
+        .catch((err: any) => {
+            reject(err);
+        });
+    });
+}
+
+export async function getPredictedTime(id: string): Promise<any> {
+    const cred = await util.workspace.readCredentials();
+    const apikey = cred.apiKey
+
+    return new Promise((resolve, reject) => {
+        fetch (`https://application-4d.1g4ike7zqsct.us-south.codeengine.appdomain.cloud/api/v1/predictor/${id}`, {
+            method: 'GET',
+            headers: {
+                'Apikey': apikey
+            }
+        })
+        .then(response => resolve(response.json()))
+        .then(response => console.debug(response))
+        .catch((err: any) => {
+            reject(err);
+        });
+    });
+}
+
+export async function getPredictorStatus(id: string): Promise<any> {
+    const cred = await util.workspace.readCredentials();
+    const apikey = cred.apiKey
+
+    return new Promise((resolve, reject) => {
+        fetch (`https://application-4d.1g4ike7zqsct.us-south.codeengine.appdomain.cloud/api/v1/predictor/${id}/status`, {
+            method: 'GET',
+            headers: {
+                'Apikey': apikey
+            }
+        })
+        .then(response => resolve(response.json()))
+        .then(response => console.debug(response))
+        .catch((err: any) => {
+            reject(err);
+        });
     });
 }
 
